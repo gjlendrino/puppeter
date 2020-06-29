@@ -1,5 +1,6 @@
 // npm i puppeteer
 // npm i puppeteer-lighthouse
+// npm i lighthouse
 /**
  * @license Copyright 2019 The Lighthouse Authors. All Rights Reserved.
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
@@ -8,17 +9,14 @@
 'use strict';
 
 /**
- * @fileoverview Example script for running Lighthouse on an authenticated page.
- * See docs/recipes/auth/README.md for more.
+ * @fileoverview Script for running Lighthouse on an authenticated page.
+ * See README.md for more.
  */
 
+const fs = require('fs');
 const puppeteer = require('puppeteer');
 const lighthouse = require('lighthouse');
-
-// This port will be used by Lighthouse later. The specific port is arbitrary.
-const PORT = 8041;
-const USERNAME = 'admin';
-const PASSWORD = 'pr3d3x4dm1n';
+const reportGenerator = require('lighthouse/lighthouse-core/report/report-generator');
 
 /**
  * @param {import('puppeteer').Browser} browser
@@ -32,41 +30,25 @@ async function login(browser, origin) {
 
   // Fill in and submit login form.
   const emailInput = await page.$('input[type="text"]');
-  await emailInput.type(USERNAME);
+  await emailInput.type('admin');
   const passwordInput = await page.$('input[type="password"]');
-  await passwordInput.type(PASSWORD);
+  await passwordInput.type('pr3d3x4dm1n');
+  // await Promise.all([
+  //   page.$eval('.login-form', form => form.submit()),
+  //   page.waitForNavigation(),
+  // ]);
   await page.click('#loginForm > div.field.submit > div > button');
 
   // Submit grant form.
-  page.waitForSelector('#approve', {visible: true})
   await page.click('#approve');
-  
-  await page.waitFor(14000);
-  // await page.waitForSelector('#approve', {visible: true});
-
-  await page.close();
-}
-
-/**
- * @param {puppeteer.Browser} browser
- * @param {string} origin
- */
-async function logout(browser, origin) {
-  await page.click('body > app-root > mat-sidenav-container > mat-sidenav > div > div > div.user-more > button > span > i');
-
-  page.waitForSelector('#mat-menu-panel-0 > div > button:nth-child(3)', {visible: true})
-  await page.click('#mat-menu-panel-0 > div > button:nth-child(3)');
-  
-  await page.close();
 }
 
 async function main() {
   // Direct Puppeteer to open Chrome with a specific debugging port.
   const browser = await puppeteer.launch({
-    //args: ['--remote-debugging-port=${PORT}', '--start-maximized'],
-    args: ['--start-maximized'],
+    //args: ['--start-maximized'],
     // Optional, if you want to see the tests in action.
-    headless: false,
+    //headless: false,
     slowMo: 50,
   });
 
@@ -76,19 +58,29 @@ async function main() {
   // The local server is running on port 10632.
   const url = 'https://192.168.1.101/pwa/';
   // Direct Lighthouse to use the same port.
-  // const result = await lighthouse(url, {port: PORT, disableStorageReset: true});
-  // Direct Puppeteer to close the browser as we're done with it.
-  await browser.close();
+  //args = ["--emulated-form-factor=desktop", "--output-path=./lighthouse-report.html", "--chrome-flags=--headless --no-sandbox", "https://localhost" ]
+  const report = await lighthouse(url, {
+    port: (new URL(browser.wsEndpoint())).port,
+    output: 'html',
+    disableStorageReset: true,
+    emulatedFormFactor: 'desktop',
+    //chromeFlags: ['--disable-mobile-emulation', '--disable-storage-reset'],
+    chromeFlags: ['--chrome-flags=--headless', '--no-sandbox'],
+
+  });
 
   // Output the result.
-  // console.log(JSON.stringify(result.lhr, null, 2));
+  const html = reportGenerator.generateReport(report.lhr, 'html');
+  fs.writeFileSync('lighthouse-report.html', html);
+
+  // Direct Puppeteer to close the browser as we're done with it.
+  await browser.close();
 }
 
 if (require.main === module) {
   main();
 } else {
   module.exports = {
-    login,
-    logout
+    login
   };
 }
