@@ -26,6 +26,7 @@ const PASSWORD = 'pr3d3x4dm1n';
  */
 async function login(browser, origin) {
   const page = await browser.newPage();
+  await page.setViewport({width:0, height:0});
   await page.goto(origin);
   await page.waitForSelector('input[type="text"]', {visible: true});
 
@@ -46,10 +47,24 @@ async function login(browser, origin) {
   await page.close();
 }
 
+/**
+ * @param {puppeteer.Browser} browser
+ * @param {string} origin
+ */
+async function logout(browser, origin) {
+  await page.click('body > app-root > mat-sidenav-container > mat-sidenav > div > div > div.user-more > button > span > i');
+
+  page.waitForSelector('#mat-menu-panel-0 > div > button:nth-child(3)', {visible: true})
+  await page.click('#mat-menu-panel-0 > div > button:nth-child(3)');
+  
+  await page.close();
+}
+
 async function main() {
   // Direct Puppeteer to open Chrome with a specific debugging port.
   const browser = await puppeteer.launch({
-    args: [`--remote-debugging-port=${PORT}`],
+    //args: ['--remote-debugging-port=${PORT}', '--start-maximized'],
+    args: ['--start-maximized'],
     // Optional, if you want to see the tests in action.
     headless: false,
     slowMo: 50,
@@ -59,11 +74,11 @@ async function main() {
   await login(browser, 'https://192.168.1.101/pwa/');
 
   // The local server is running on port 10632.
-  // const url = 'https://192.168.1.101/pwa/';
+  const url = 'https://192.168.1.101/pwa/';
   // Direct Lighthouse to use the same port.
   // const result = await lighthouse(url, {port: PORT, disableStorageReset: true});
   // Direct Puppeteer to close the browser as we're done with it.
-  // await browser.close();
+  await browser.close();
 
   // Output the result.
   // console.log(JSON.stringify(result.lhr, null, 2));
@@ -73,6 +88,7 @@ if (require.main === module) {
   main();
 } else {
   module.exports = {
-    login
+    login,
+    logout
   };
 }
